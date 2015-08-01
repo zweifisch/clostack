@@ -1,4 +1,4 @@
-(defproject clostack "0.1.0-SNAPSHOT"
+(defproject zf/clostack "0.1.0-SNAPSHOT"
   :description "openstack client for clojure"
   :url "https://github.com/zweifisch/clostack"
   :license {:name "MIT License"

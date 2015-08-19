@@ -55,3 +55,5 @@
     (firewall-policy-delete token id)
     (doseq [rule rules]
       (firewall-rule-delete token rule))))
+
+(defres quota "/v2.0/quotas" :quota :quotas)

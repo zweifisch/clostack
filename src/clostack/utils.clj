@@ -65,8 +65,11 @@
            (case method
              (:delete :get)
              `(def ~name
-                (fn [token# id# sub-id# & [options#]]
-                  (-> (request token# ~method (str (endpoint-get token# ~service) ~url "/" id# ~segment "/" sub-id#) :query options#))))
+                (fn
+                  ([token# id# sub-id# & [options#]]
+                   (-> (request token# ~method (str (endpoint-get token# ~service) ~url "/" id# ~segment "/" sub-id#) :query options#)))
+                  ([token# id#]
+                   (-> (request token# ~method (str (endpoint-get token# ~service) ~url "/" id# ~segment))))))
              `(def ~name
                 (fn [token# id# body#]
                   (-> (request token# ~method (str (endpoint-get token# ~service) ~url "/" id# ~segment) :body body#)))))))))

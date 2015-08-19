@@ -15,7 +15,14 @@
   [interface-detach :delete "/os-interface"]
   [interface-create :post "/os-interface"]
   [volume-attach :post "/os-volume_attachments"]
-  [volume-detach :delete "/os-volume_attachments"])
+  [volume-detach :delete "/os-volume_attachments"]
+  [action :post "/action"])
+
+(defn server-get-console [token id type]
+  (-> (server-action token id {:os-getVNCConsole {:type type}}) :body :console))
+
+(defn server-get-console-output [token id length]
+  (-> (server-action token id {:os-getConsoleOutput {:length length}}) :body :output))
 
 (defres flavor "/flavors/detail" :flavor :flavors)
 
@@ -26,14 +33,15 @@
 
 (defres host "/os-hosts" :host :hosts)
 
-(defres hypervisor "/os-hypervisors" :hypervisor :hypervisors)
+(defres hypervisor "/os-hypervisors" :hypervisor :hypervisors
+  [migratenode-list :get "/migratenodes"])
 
 (defres service "/os-services" :service :services)
 
 (defn aggregate-set-metadata [token id metadata]
   (aggregate-action {:set_metadata {:metadata metadata}}))
 
-(defres limits "/limits" :limit :limits)
+(defres limit "/limits" :limit :limits)
 
 (defn get-link [resp key rel]
   (->> resp key (filter #(= rel (:rel %))) first :href))

@@ -24,7 +24,9 @@
 (defn server-get-console-output [token id length]
   (-> (server-action token id {:os-getConsoleOutput {:length length}}) :body :output))
 
-(defres flavor "/flavors/detail" :flavor :flavors)
+(defres flavor "/flavors" :flavor :flavors)
+
+(defres flavor-detail "/flavors/detail" :flavor :flavors)
 
 (defres keypair "/os-keypairs" :keypair :keypairs)
 
@@ -34,7 +36,9 @@
 (defres host "/os-hosts" :host :hosts)
 
 (defres hypervisor "/os-hypervisors" :hypervisor :hypervisors
-  [migratenode-list :get "/migratenodes"])
+  [migratenode-list :get "/migratenodes"]
+  [uptime :get "/uptime"]
+  [statistic :get "/statistics"])
 
 (defres service "/os-services" :service :services)
 

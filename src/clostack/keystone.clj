@@ -3,11 +3,20 @@
             [clojure.set :refer [rename-keys]]
             [clostack.utils :as utils]))
 
-(defn token-create [url &{:keys [domain-name name password scope] :or {domain-name "default"}}]
+(defmulti token-create (fn [_ & [params]] (map? params)))
+
+(defmethod token-create false [url &{:keys [domain-name domain-id name password scope] :or {domain-name "default"}}]
+  (token-create url {:domain-name domain-name
+                     :domain-id domain-id
+                     :name name
+                     :password password
+                     :scope scope}))
+
+(defmethod token-create true [url {:keys [domain-name domain-id name password scope] :or {domain-name "default"}}]
   (let [body
         {:auth (merge {:identity
                        {:methods ["password"]
-                        :password {:user {:domain {:name domain-name}
+                        :password {:user {:domain {:name domain-name :id domain-id}
                                           :name name
                                           :password password}}}}
                       (when scope {:scope scope}))}
@@ -37,13 +46,13 @@
 (defres user "/users" :user :users)
 
 (defn role-assignment-list [token query]
-  (-> (utils/request token :get "/role_assignments"
+  (-> (utils/request token :get (str (utils/endpoint-get token "identity") "/role_assignments")
                      :query (rename-keys query {:project-id :scope.project.id
                                                 :user-id :user.id
                                                 :group-id :group.id
                                                 :role-id :role.id
                                                 :domain-id :scope.domain.id}))
-      :body))
+      :body :role_assignments))
 
 (defn role-map [token]
   (let [roles (role-list token)]

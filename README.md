@@ -2,13 +2,16 @@
 
 openstack client for clojure
 
+[![Clojars Project](https://img.shields.io/clojars/v/zf/clostack.svg)](https://clojars.org/zf/clostack)
+
 ## Usage
 
 ```clj
 (require '[clostack.keystone :refer [token-create]])
 (require '[clostack.nova :as nova])
 
-(let [token (token-create "http://keystone:5000/v3/auth/tokens" :name "admin" :password "secret")]
+(let [scope {:project {:name "admin" :domain {:name "Default"}}}
+      token (token-create "http://keystone:5000/v3/auth/tokens" :name "admin" :password "secret" :scope scope)]
   (nova/server-list token {:all_tenants true}))
 ```
 

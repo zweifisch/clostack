@@ -18,6 +18,8 @@
   [volume-detach :delete "/os-volume_attachments"]
   [action :post "/action"])
 
+(defres server-volume-attachment "/servers/:server-id/os-volume_attachments" :volumeAttachment :volumeAttachments)
+
 (defn server-get-console [token id type]
   (-> (server-action token id {:os-getVNCConsole {:type type}}) :body :console))
 

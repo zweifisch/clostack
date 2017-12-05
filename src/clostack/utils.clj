@@ -48,44 +48,51 @@
                                 (= (or interface "public") (:interface %))))
        first :url))
 
+(defn join [tokens tokens2]
+  (interleave tokens (concat tokens2 [""])))
+
 (defmacro defres [name service url singular plural & more]
   (let [list (symbol (str name "-list"))
         list-pager (symbol (str name "-list-pager"))
         get (symbol (str name "-get"))
         delete (symbol (str name "-delete"))
         update (symbol (str name "-update"))
-        create (symbol (str name "-create"))]
+        create (symbol (str name "-create"))
+        pargs (map (comp symbol second) (re-seq #":([^:/]+)" url))
+        segments (join (s/split url #":[^:/]+") pargs)]
     `(do
        (def ~list
-         (fn [token# & [options#]]
-           (-> (request token# :get (str (endpoint-get token# ~service) ~url) :query options#) :body ~plural)))
+         (fn [token# ~@pargs & [options#]]
+           (-> (request token# :get (str (endpoint-get token# ~service) ~@segments) :query options#) :body ~plural)))
        (def ~list-pager
-         (fn [token# & [options#]]
-           (-> (request token# :get (str (endpoint-get token# ~service) ~url) :query options#) :body)))
+         (fn [token# ~@pargs & [options#]]
+           (-> (request token# :get (str (endpoint-get token# ~service) ~@segments) :query options#) :body)))
        (def ~get
-         (fn [token# id#]
-           (-> (request token# :get (str (endpoint-get token# ~service) ~url "/" id#)) :body ~singular)))
+         (fn [token# ~@pargs id#]
+           (-> (request token# :get (str (endpoint-get token# ~service) ~@segments "/" id#)) :body ~singular)))
        (def ~delete
-         (fn [token# id#]
-           (-> (request token# :delete (str (endpoint-get token# ~service) ~url "/" id#)))))
+         (fn [token# ~@pargs id#]
+           (-> (request token# :delete (str (endpoint-get token# ~service) ~@segments "/" id#)))))
        (def ~update
-         (fn [token# id# body#]
-           (-> (request token# :patch (str (endpoint-get token# ~service) ~url "/" id#) :body {~singular body#}))))
+         (fn [token# ~@pargs id# body#]
+           (-> (request token# :patch (str (endpoint-get token# ~service) ~@segments "/" id#) :body {~singular body#}))))
        (def ~create
-         (fn [token# body#]
-           (-> (request token# :post (str (endpoint-get token# ~service) ~url) :body {~singular body#}) :body ~singular)))
+         (fn [token# ~@pargs body#]
+           (-> (request token# :post (str (endpoint-get token# ~service) ~@segments) :body {~singular body#}) :body ~singular)))
        ~@(for [[f method segment] more
                :let [name (symbol (str name "-" f))]]
            (case method
              (:delete :get)
              `(def ~name
                 (fn
-                  ([token# id# sub-id# & [options#]]
-                   (-> (request token# ~method (str (endpoint-get token# ~service) ~url "/" id# ~segment "/" sub-id#) :query options#)))
-                  ([token# id#]
-                   (-> (request token# ~method (str (endpoint-get token# ~service) ~url "/" id# ~segment))))
-                  ([token#]
-                   (-> (request token# ~method (str (endpoint-get token# ~service) ~url ~segment))))))
+                  ([token# ~@pargs id# sub-id# & [options#]]
+                   (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments "/" id# ~segment "/" sub-id#) :query options#)))
+                  ([token# ~@pargs id#]
+                   (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments "/" id# ~segment))))
+                  ([token# ~@pargs]
+                   (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments ~segment))))))
              `(def ~name
-                (fn [token# id# body#]
-                  (-> (request token# ~method (str (endpoint-get token# ~service) ~url "/" id# ~segment) :body body#)))))))))
+                (fn [token# ~@pargs id# body#]
+                  (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments "/" id# ~segment) :body body#)))))))))
+
+;; (macroexpand '(defres server "compute" "/servers/id/attachments" :server :servers))

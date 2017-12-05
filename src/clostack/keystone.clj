@@ -1,7 +1,9 @@
 (ns clostack.keystone
   (:require [clj-http.client :as client]
             [clojure.set :refer [rename-keys]]
-            [clostack.utils :as utils]))
+            [clostack.utils :as utils]
+            ;; [cheshire.core :as json]
+            [clojure.data.json :as json]))
 
 (defmulti token-create (fn [_ & [params]] (map? params)))
 
@@ -13,19 +15,23 @@
                      :scope scope}))
 
 (defmethod token-create true [url {:keys [domain-name domain-id name password scope] :or {domain-name "default"}}]
-  (let [body
-        {:auth (merge {:identity
-                       {:methods ["password"]
-                        :password {:user {:domain {:name domain-name :id domain-id}
-                                          :name name
-                                          :password password}}}}
-                      (when scope {:scope scope}))}
-        resp (client/post url {:form-params body
-                               :content-type :json
-                               :accept :json
-                               :as :json})
-        token (get-in resp [:headers "X-Subject-Token"])]
-    (assoc (get-in resp [:body :token]) :token token)))
+  (with-redefs [clj-http.client/json-enabled? true]
+    (binding [clj-http.client/json-encode (fn [input _] (json/write-str input))
+              clj-http.client/json-decode (fn [input _] (json/read-str input :key-fn keyword))]
+      (let [body
+            {:auth (merge {:identity
+                           {:methods ["password"]
+                            :password {:user {:domain {:name domain-name :id domain-id}
+                                              :name name
+                                              :password password}}}}
+                          (when scope {:scope scope}))}
+            resp (client/post url (merge {:form-params body
+                                          :content-type :json
+                                          :accept :json
+                                          :as :json}
+                                         (utils/http-proxy)))
+            token (get-in resp [:headers "X-Subject-Token"])]
+        (assoc (get-in resp [:body :token]) :token token)))))
 
 (defmacro defres [name url singular plural]
   `(utils/defres ~name "identity" ~url ~singular ~plural))

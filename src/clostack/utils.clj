@@ -1,6 +1,8 @@
 (ns clostack.utils
   (:require [clj-http.client :as client]
-            [clojure.string :as s]))
+            [clojure.string :as s]
+            ;; [cheshire.core :as json]
+            [clojure.data.json :as json]))
 
 (declare ^:dynamic *proxy-host*)
 (declare ^:dynamic *proxy-port*)
@@ -9,23 +11,35 @@
   (into {} (for [[k v] m]
              [(s/replace (subs (str k) 1) #"-" "_") v])))
 
+(defn http-proxy-from-env []
+  (when-let [http-proxy (System/getenv "http_proxy")]
+    (let [url (java.net.URL. http-proxy)]
+      {:proxy-host (.getHost url)
+       :proxy-port (.getPort url)})))
+
+(defn http-proxy []
+  (if (bound? #'*proxy-host* #'*proxy-port*)
+    {:proxy-host *proxy-host*
+     :proxy-port *proxy-port*}
+    (http-proxy-from-env)))
+
 (defn list-map
   ([l key] (zipmap (map key l) l))
   ([l key val] (zipmap (map key l) (map val l))))
 
 (defn request [token method url & {:keys [body query]}]
-  (client/request (merge {:method method
-                          :url url
-                          :headers {:X-Auth-Token (:token token)}
-                          :form-params body
-                          :query-params (dash-key query)
-                          :content-type :json
-                          :accept :json
-                          :as :json}
-                         (when (bound? #'*proxy-host* #'*proxy-port*)
-                           {:proxy-host *proxy-host*
-                            :proxy-port *proxy-port*})
-                         )))
+  (with-redefs [clj-http.client/json-enabled? true]
+    (binding [clj-http.client/json-encode (fn [input _] (json/write-str input))
+              clj-http.client/json-decode (fn [input _] (json/read-str input :key-fn keyword))]
+      (client/request (merge {:method method
+                              :url url
+                              :headers {:X-Auth-Token (:token token)}
+                              :form-params body
+                              :query-params (dash-key query)
+                              :content-type :json
+                              :accept :json
+                              :as :json}
+                             (http-proxy))))))
 
 (defn endpoint-get [token service & [interface region]]
   (->> token
@@ -59,7 +73,7 @@
            (-> (request token# :patch (str (endpoint-get token# ~service) ~url "/" id#) :body {~singular body#}))))
        (def ~create
          (fn [token# body#]
-           (-> (request token# :post (str (endpoint-get token# ~service) ~url) :body {~singular body#}))))
+           (-> (request token# :post (str (endpoint-get token# ~service) ~url) :body {~singular body#}) :body ~singular)))
        ~@(for [[f method segment] more
                :let [name (symbol (str name "-" f))]]
            (case method

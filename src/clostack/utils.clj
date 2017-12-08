@@ -27,7 +27,7 @@
   ([l key] (zipmap (map key l) l))
   ([l key val] (zipmap (map key l) (map val l))))
 
-(defn request [token method url & {:keys [body query]}]
+(defn request [token method url & {:keys [body query as accept] :or {as :json accept :json}}]
   (with-redefs [clj-http.client/json-enabled? true]
     (binding [clj-http.client/json-encode (fn [input _] (json/write-str input))
               clj-http.client/json-decode (fn [input _] (json/read-str input :key-fn keyword))]
@@ -37,8 +37,8 @@
                               :form-params body
                               :query-params (dash-key query)
                               :content-type :json
-                              :accept :json
-                              :as :json}
+                              :accept accept
+                              :as as}
                              (http-proxy))))))
 
 (defn endpoint-get [token service & [interface region]]

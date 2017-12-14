@@ -4,8 +4,8 @@
 (defmacro defres [name url singular plural & more]
   `(utils/defres ~name "volumev2" ~url ~singular ~plural ~@more))
 
-(defres volume "/volumes" :volume :volumes
-  [action :put "/action"])
+(defres volume "/volumes" :volume :volumes :custom-actions
+  [[action :put "/action"]])
 
 (defres volume-detail "/volumes/detail" :volume :volumes)
 

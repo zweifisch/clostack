@@ -8,9 +8,9 @@
 
 (defres subnet "/v2.0/subnets" :subnet :subnets)
 
-(defres router "/v2.0/routers" :router :routers
-  [interface-add :put "/add_router_interface"]
-  [interface-remove :put "/remove_router_interface"])
+(defres router "/v2.0/routers" :router :routers :custom-actions
+  [[interface-add :put "/add_router_interface"]
+   [interface-remove :put "/remove_router_interface"]])
 
 (defres port "/v2.0/ports" :port :ports)
 
@@ -43,8 +43,8 @@
 
 (defres lb-health-monitor "/v2.0/lb/health_monitors" :health_monitor :health_monitors)
 
-(defres lb-pool "/v2.0/lb/pools" :pool :pools
-  [health-monitor-disassociate :delete "/health_monitors"])
+(defres lb-pool "/v2.0/lb/pools" :pool :pools :custom-actions
+  [[health-monitor-disassociate :delete "/health_monitors"]])
 
 (defres lb-member"/v2.0/lb/members" :member :members)
 

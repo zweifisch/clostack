@@ -27,18 +27,20 @@
   ([l key] (zipmap (map key l) l))
   ([l key val] (zipmap (map key l) (map val l))))
 
-(defn request [token method url & {:keys [body query as accept] :or {as :json accept :json}}]
+(defn request [token method url & {:keys [body query as accept content-type] :or {as :json accept :json content-type :json}}]
   (with-redefs [clj-http.client/json-enabled? true]
     (binding [clj-http.client/json-encode (fn [input _] (json/write-str input))
               clj-http.client/json-decode (fn [input _] (json/read-str input :key-fn keyword))]
       (client/request (merge {:method method
                               :url url
                               :headers {:X-Auth-Token (:token token)}
-                              :form-params body
                               :query-params (dash-key query)
-                              :content-type :json
+                              :content-type content-type
                               :accept accept
                               :as as}
+                             (if (or (map? body) (vector? body))
+                               {:form-params body}
+                               {:body body})
                              (http-proxy))))))
 
 (defn endpoint-get [token service & [interface region]]
@@ -51,7 +53,7 @@
 (defn join [tokens tokens2]
   (interleave tokens (concat tokens2 [""])))
 
-(defmacro defres [name service url singular plural & more]
+(defmacro defres [name service url singular plural & {:keys [custom-actions only] :or {only '(list list-pager get delete update create) custom-actions []}}]
   (let [list (symbol (str name "-list"))
         list-pager (symbol (str name "-list-pager"))
         get (symbol (str name "-get"))
@@ -59,27 +61,37 @@
         update (symbol (str name "-update"))
         create (symbol (str name "-create"))
         pargs (map (comp symbol second) (re-seq #":([^:/]+)" url))
+        actions (set only)
         segments (join (s/split url #":[^:/]+") pargs)]
     `(do
-       (def ~list
-         (fn [token# ~@pargs & [options#]]
-           (-> (request token# :get (str (endpoint-get token# ~service) ~@segments) :query options#) :body ~plural)))
-       (def ~list-pager
-         (fn [token# ~@pargs & [options#]]
-           (-> (request token# :get (str (endpoint-get token# ~service) ~@segments) :query options#) :body)))
-       (def ~get
-         (fn [token# ~@pargs id#]
-           (-> (request token# :get (str (endpoint-get token# ~service) ~@segments "/" id#)) :body ~singular)))
-       (def ~delete
-         (fn [token# ~@pargs id#]
-           (-> (request token# :delete (str (endpoint-get token# ~service) ~@segments "/" id#)))))
-       (def ~update
-         (fn [token# ~@pargs id# body#]
-           (-> (request token# :patch (str (endpoint-get token# ~service) ~@segments "/" id#) :body {~singular body#}))))
-       (def ~create
-         (fn [token# ~@pargs body#]
-           (-> (request token# :post (str (endpoint-get token# ~service) ~@segments) :body {~singular body#}) :body ~singular)))
-       ~@(for [[f method segment] more
+       ~@(->> `(~'list
+                (def ~list
+                  (fn [token# ~@pargs & [options#]]
+                    (-> (request token# :get (str (endpoint-get token# ~service) ~@segments) :query options#) :body ~plural)))
+                ~'list-pager
+                (def ~list-pager
+                  (fn [token# ~@pargs & [options#]]
+                    (-> (request token# :get (str (endpoint-get token# ~service) ~@segments) :query options#) :body)))
+                ~'get
+                (def ~get
+                  (fn [token# ~@pargs id#]
+                    (-> (request token# :get (str (endpoint-get token# ~service) ~@segments "/" id#)) :body ~@(if singular `(~singular) '()))))
+                ~'delete
+                (def ~delete
+                  (fn [token# ~@pargs id#]
+                    (-> (request token# :delete (str (endpoint-get token# ~service) ~@segments "/" id#)))))
+                ~'update
+                (def ~update
+                  (fn [token# ~@pargs id# ~'body]
+                    (-> (request token# :patch (str (endpoint-get token# ~service) ~@segments "/" id#) :body ~(if (nil? singular) 'body {singular 'body})))))
+                ~'create
+                (def ~create
+                  (fn [token# ~@pargs ~'body]
+                    (-> (request token# :post (str (endpoint-get token# ~service) ~@segments) :body ~(if (nil? singular) 'body {singular 'body})) :body ~@(if singular `(~singular) '())))))
+              (partition 2)
+              (filter (comp actions first))
+              (map last))
+       ~@(for [[f method segment] custom-actions
                :let [name (symbol (str name "-" f))]]
            (case method
              (:delete :get)
@@ -95,4 +107,20 @@
                 (fn [token# ~@pargs id# body#]
                   (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments "/" id# ~segment) :body body#)))))))))
 
-;; (macroexpand '(defres server "compute" "/servers/id/attachments" :server :servers))
+#_
+(macroexpand '(defres server "compute" "/servers/id/attachments" nil :servers :custom-actions [[action :post "/action"]]))
+
+#_
+(macroexpand '(defres server "compute" "/servers/id/attachments" :server :servers))
+
+#_
+(defres server "compute" "/servers/id/attachments" :server :servers)
+
+#_
+(macroexpand '(defres image "image" "/v2/images" nil :images))
+
+#_
+(macroexpand '(defres image "image" "/v2/images" nil :images :only [list]))
+
+#_
+(defres image "image" "/v2/images" nil :images :only [list])

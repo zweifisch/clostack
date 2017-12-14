@@ -11,12 +11,10 @@
 
 (defres server-detail "/servers/detail" :server :servers)
 
-(defres server "/servers" :server :servers
-  [interface-detach :delete "/os-interface"]
-  [interface-create :post "/os-interface"]
-  [volume-attach :post "/os-volume_attachments"]
-  [volume-detach :delete "/os-volume_attachments"]
-  [action :post "/action"])
+(defres server "/servers" :server :servers :custom-actions
+  [[action :post "/action"]])
+
+(defres server-interface-attachment "/servers/:server-id/os-interface" :interfaceAttachment :interfaceAttachments)
 
 (defres server-volume-attachment "/servers/:server-id/os-volume_attachments" :volumeAttachment :volumeAttachments)
 
@@ -32,15 +30,15 @@
 
 (defres keypair "/os-keypairs" :keypair :keypairs)
 
-(defres aggregate "/os-aggregates" :aggregate :aggregates
-  [action :post "/action"])
+(defres aggregate "/os-aggregates" :aggregate :aggregates :custom-actions
+  [[action :post "/action"]])
 
 (defres host "/os-hosts" :host :hosts)
 
-(defres hypervisor "/os-hypervisors" :hypervisor :hypervisors
-  [migratenode-list :get "/migratenodes"]
-  [uptime :get "/uptime"]
-  [statistic :get "/statistics"])
+(defres hypervisor "/os-hypervisors" :hypervisor :hypervisors :custom-actions
+  [[uptime :get "/uptime"]])
+
+(defres hypervisor-statistic "/os-hypervisors/statistics" identity :hypervisor_statistics)
 
 (defres service "/os-services" :service :services)
 

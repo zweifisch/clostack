@@ -2,7 +2,7 @@
   (:require [clostack.utils :as utils]))
 
 (defmacro defres [name url singular plural & more]
-  `(utils/defres ~name "network" ~url ~singular ~plural ~@more))
+  `(utils/defres ~name "network" ~url ~singular ~plural ~@more :put-for-update true))
 
 (defres network "/v2.0/networks" :network :networks)
 
@@ -57,3 +57,7 @@
       (firewall-rule-delete token rule))))
 
 (defres quota "/v2.0/quotas" :quota :quotas)
+
+(defres qos-policy "/v2.0/qos/policies" :policy :policies)
+(defres qos-rule-type "/v2.0/qos/rule-types" :rule_type :rule_types)
+(defres qos-bandwidth-limit-rule "/v2.0/qos/policies/:policy_id/bandwidth_limit_rules" :bandwidth_limit_rule :bandwidth_limit_rules)

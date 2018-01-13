@@ -33,8 +33,8 @@
             token (get-in resp [:headers "X-Subject-Token"])]
         (assoc (get-in resp [:body :token]) :token token)))))
 
-(defmacro defres [name url singular plural]
-  `(utils/defres ~name "identity" ~url ~singular ~plural))
+(defmacro defres [name url singular plural & more]
+  `(utils/defres ~name "identity" ~url ~singular ~plural ~@more))
 
 (defn services-list [token]
   (->> token :catalog (map :type)))
@@ -64,3 +64,10 @@
   (let [roles (role-list token)]
     (into {} (for [{name :name id :id} roles]
                [(keyword name) id]))))
+
+(defres user-project "/users/:id/projects" :project :projects :only [list])
+
+(defres role-imply "/roles/:id/roles" :role_inference :role_inference :custom-actions
+  [[create :put "/:role"]])
+
+(defres role-inference "/role_inferences" nil :role_inferences :only [list])

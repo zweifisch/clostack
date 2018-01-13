@@ -4,7 +4,7 @@
             [clojure.string :as string]))
 
 (defmacro defres [name url singular plural & more]
-  `(utils/defres ~name "compute" ~url ~singular ~plural ~@more))
+  `(utils/defres ~name "compute" ~url ~singular ~plural ~@more :put-for-update true))
 
 (defn gen-url [token & segments]
   (apply str (cons (utils/endpoint-get token "compute") segments)))
@@ -23,6 +23,8 @@
 
 (defn server-get-console-output [token id length]
   (-> (server-action token id {:os-getConsoleOutput {:length length}}) :body :output))
+
+(defres server-tag "/servers/:server-id/tags" :tag :tags)
 
 (defres flavor "/flavors" :flavor :flavors)
 
@@ -67,3 +69,21 @@
 (defn flavor-map [token]
   (let [flavors (-> (flavor-list token))]
     (zipmap (map :id flavors) flavors)))
+
+(defres version "/" :version :version :only [get list])
+
+(defres availability-zone "/os-availability-zone" nil :availabilityZoneInfo :only [list])
+
+(defres availability-zone-detail "/os-availability-zone/detail" nil :availabilityZoneInfo :only [list])
+
+(defres aggregate "/os-aggregates" :aggregate :aggregates :custom-actions
+  [[action :post "/action"]
+   [update :put ""]])
+
+(defn aggregate-add-host [token id host]
+  (aggregate-action token id {:add_host {:host host}}))
+
+(defn aggregate-remove-host [token id host]
+  (aggregate-action token id {:remove_host {:host host}}))
+
+(defres simple-tenant-usage "/os-simple-tenant-usage" :tenant_usage :tenant_usages :only [list get])

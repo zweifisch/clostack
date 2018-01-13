@@ -44,16 +44,18 @@
                              (http-proxy))))))
 
 (defn endpoint-get [token service & [interface region]]
-  (->> token
-       :catalog (filter #(= service (:type %))) first
-       :endpoints (filter #(and (or (not region) (= region (:region %)))
-                                (= (or interface "public") (:interface %))))
-       first :url))
+  (let [url (->> token
+                 :catalog (filter #(= service (:type %))) first
+                 :endpoints (filter #(and (or (not region) (= region (:region %)))
+                                          (= (or interface "public") (:interface %))))
+                 first
+                 :url)]
+    (if (= service "identity") (s/replace-first url "/v2.0" "/v3") url)))
 
 (defn join [tokens tokens2]
   (interleave tokens (concat tokens2 [""])))
 
-(defmacro defres [name service url singular plural & {:keys [custom-actions only] :or {only '(list list-pager get delete update create) custom-actions []}}]
+(defmacro defres [name service url singular plural & {:keys [custom-actions only put-for-update] :or {only '(list list-pager get delete update create) custom-actions [] put-for-update false}}]
   (let [list (symbol (str name "-list"))
         list-pager (symbol (str name "-list-pager"))
         get (symbol (str name "-get"))
@@ -83,7 +85,8 @@
                 ~'update
                 (def ~update
                   (fn [token# ~@pargs id# ~'body]
-                    (-> (request token# :patch (str (endpoint-get token# ~service) ~@segments "/" id#) :body ~(if (nil? singular) 'body {singular 'body})))))
+                    (-> (request token# ~(if put-for-update :put :patch) (str (endpoint-get token# ~service) ~@segments "/" id#) :body ~(if (nil? singular) 'body {singular 'body}))
+                        :body ~@(if singular `(~singular) '()))))
                 ~'create
                 (def ~create
                   (fn [token# ~@pargs ~'body]
@@ -104,8 +107,11 @@
                   ([token# ~@pargs]
                    (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments ~segment))))))
              `(def ~name
-                (fn [token# ~@pargs id# body#]
-                  (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments "/" id# ~segment) :body body#)))))))))
+                (fn
+                  ([token# ~@pargs id# body#]
+                   (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments "/" id# ~segment) :body body#)))
+                  ([token# ~@pargs id# sub-id# body# & [options#]]
+                   (-> (request token# ~method (str (endpoint-get token# ~service) ~@segments "/" id# ~segment "/" sub-id#) :query options#))))))))))
 
 #_
 (macroexpand '(defres server "compute" "/servers/id/attachments" nil :servers :custom-actions [[action :post "/action"]]))
@@ -117,7 +123,7 @@
 (defres server "compute" "/servers/id/attachments" :server :servers)
 
 #_
-(macroexpand '(defres image "image" "/v2/images" nil :images))
+(macroexpand '(defres image "image" "/v2/images" nil :images :put-for-update true))
 
 #_
 (macroexpand '(defres image "image" "/v2/images" nil :images :only [list]))

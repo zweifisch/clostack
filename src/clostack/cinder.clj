@@ -21,4 +21,4 @@
      (:body
       (utils/request token :get url)))))
 
-(defres availability-zone "/os-availability-zone" :nil :availabilityZoneInfo :only [list])
+(defres availability-zone "/os-availability-zone" nil :availabilityZoneInfo :only [list])

@@ -44,10 +44,12 @@
                              (http-proxy))))))
 
 (defn endpoint-get [token service & [interface region]]
-  (let [url (->> token
+  (let [region (or region (:region token))
+        interface (or interface (:interface token) "public")
+        url (->> token
                  :catalog (filter #(= service (:type %))) first
                  :endpoints (filter #(and (or (not region) (= region (:region %)))
-                                          (= (or interface "public") (:interface %))))
+                                          (= interface (:interface %))))
                  first
                  :url)]
     (if (= service "identity") (s/replace-first url "/v2.0" "/v3") url)))

@@ -15,6 +15,12 @@ openstack client for clojure
   (nova/server-list token {:all_tenants true}))
 ```
 
+speicfy region and endpoint interface
+
+```clj
+(nova/server-detail-list (assoc token :region "dc2" :interface "internal") {:all_tenants true})
+```
+
 ## License
 
 ```
